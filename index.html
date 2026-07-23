@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PatternScan QC VISION (Debug Mode)</title>
+    <title>PatternScan QC VISION (Debug Mode - Safari Fixed)</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Oxanium:wght@700&display=swap');
         
@@ -18,7 +18,6 @@
         .btn-primary:disabled { background: #cbd5e1; cursor: not-allowed; }
         .result-card { padding: 16px; border-radius: 10px; text-align: center; margin-top: 16px; display: none; font-size: 0.9rem; }
     </style>
-    <script async src="https://cdn.jsdelivr.net/npm/@techstark/opencv-js@4.9.0/dist/opencv.min.js" onload="onOpenCvReady()"></script>
 </head>
 <body>
 
@@ -44,9 +43,10 @@
 
     <div id="resultCard" class="result-card">
         <div id="resultText" style="font-weight: 700;"></div>
-        <div id="debugText" style="font-size: 0.8rem; margin-top: 8px; color: #fff;"></div>
+        <div id="debugText" style="font-size: 0.8rem; margin-top: 8px; color: #64748b;"></div>
     </div>
 
+    <!-- โค้ดส่วนลอจิกทั้งหมด -->
     <script>
         const refImage = document.getElementById('refImage');
         const targetImage = document.getElementById('targetImage');
@@ -59,6 +59,7 @@
 
         let isReady = false;
 
+        // ฟังก์ชันนี้จะพร้อมถูกเรียกเสมอ เพราะเราย้ายโหลด OpenCV ไปไว้ล่างสุด
         function onOpenCvReady() {
             isReady = true;
             btnScan.innerText = "ตรวจสอบจุด (Debug Mode)";
@@ -135,7 +136,6 @@
             let pts = [];
             let imgArea = mat.cols * mat.rows; 
             
-            // วาดรูปลง Canvas เพื่อ Debug
             canvasElement.width = w; canvasElement.height = h;
             let debugCtx = canvasElement.getContext('2d');
             debugCtx.drawImage(imgElement, 0, 0, w, h);
@@ -149,7 +149,6 @@
                     let ptY = rect.y + rect.height / 2;
                     pts.push({ x: ptX, y: ptY, width: w, height: h });
 
-                    // วาดวงกลมสีแดงและเป้าเล็ง
                     debugCtx.beginPath();
                     debugCtx.arc(ptX, ptY, 15, 0, 2 * Math.PI);
                     debugCtx.strokeStyle = 'red';
@@ -172,7 +171,6 @@
 
             setTimeout(() => {
                 try {
-                    // เปิดใช้งาน Canvas สำหรับแสดงผล Debug
                     refImage.style.display = 'none'; refCanvas.style.display = 'block';
                     targetImage.style.display = 'none'; targetCanvas.style.display = 'block';
 
@@ -185,20 +183,19 @@
                         resultText.innerText = `FAIL // ค้นหาจุดไม่พบ`;
                         debugText.innerText = `Ref พบ: ${p1.length} จุด | Target พบ: ${p2.length} จุด`;
                         resultCard.style.background = 'var(--danger)'; 
+                        resultCard.style.color = 'white';
                         btnScan.innerText = "ตรวจสอบจุด (Debug Mode)";
                         btnScan.disabled = false;
                         return;
                     }
 
                     let matchCount = 0;
-                    // เพิ่มความคลาดเคลื่อนที่ยอมรับได้เป็น 15% เพื่อรองรับการถ่ายรูปที่มีระยะห่างต่างจากต้นฉบับ
                     let tolerance = (p1[0].width) * 0.15; 
 
                     p1.forEach(pt1 => {
                         let matched = false;
                         p2.forEach(pt2 => {
                             if (!matched) {
-                                // คำนวณระยะห่าง
                                 let dist = Math.hypot(pt1.x - pt2.x, pt1.y - pt2.y);
                                 if (dist <= tolerance) {
                                     matchCount++;
@@ -211,9 +208,11 @@
                     if (matchCount === p1.length) {
                         resultText.innerText = `PASS // ผ่าน! พบจุดอ้างอิงครบ (${matchCount}/${p1.length} จุด)`;
                         resultCard.style.background = 'var(--success)'; 
+                        resultCard.style.color = 'white';
                     } else {
                         resultText.innerText = `FAIL // ตำแหน่งพิกัดไม่ตรงกัน`;
                         resultCard.style.background = 'var(--danger)'; 
+                        resultCard.style.color = 'white';
                     }
                     debugText.innerText = `Ref พบ: ${p1.length} จุด | Target พบ: ${p2.length} จุด | จับคู่พิกัดตรงกัน: ${matchCount} จุด`;
 
@@ -227,5 +226,8 @@
             }, 100);
         };
     </script>
+
+    <!-- [ย้ายมาบรรทัดสุดท้าย] การันตีว่าฟังก์ชัน onOpenCvReady ด้านบนถูกเตรียมไว้เรียบร้อยแล้ว -->
+    <script async src="https://cdn.jsdelivr.net/npm/@techstark/opencv-js@4.9.0/dist/opencv.min.js" onload="onOpenCvReady()"></script>
 </body>
 </html>
