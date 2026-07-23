@@ -3,90 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PatternScan QC VISION (Mobile Camera Optimized)</title>
+    <title>PatternScan QC VISION (Debug Mode)</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Oxanium:wght@700&display=swap');
         
-        :root { 
-            --primary: #0284c7; 
-            --success: #0d9488; 
-            --danger: #ef4444; 
-            --bg: #f1f5f9; 
-        }
-        
-        body { 
-            font-family: 'Inter', sans-serif; 
-            background: var(--bg); 
-            padding: 16px; 
-            margin: 0; 
-        }
-        
-        .panel { 
-            background: #ffffff; 
-            border: 1px solid #e2e8f0; 
-            border-radius: 14px; 
-            padding: 16px; 
-            margin-bottom: 16px; 
-        }
-        
-        .panel-title { 
-            font-size: 0.75rem; 
-            color: #64748b; 
-            font-weight: 700; 
-            margin-bottom: 12px; 
-            font-family: 'Oxanium', sans-serif; 
-        }
-        
-        .display-box { 
-            border: 1px dashed #cbd5e1; 
-            border-radius: 10px; 
-            aspect-ratio: 4/3; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            overflow: hidden; 
-            position: relative; 
-            background-color: #fafafa;
-        }
-        
-        .display-box img { 
-            width: 100%; 
-            height: 100%; 
-            object-fit: contain; 
-        }
-        
-        .file-input-wrapper {
-            margin-top: 12px;
-            width: 100%;
-        }
-        
-        .btn-primary { 
-            background: var(--primary); 
-            color: white; 
-            border: none; 
-            width: 100%; 
-            padding: 14px; 
-            border-radius: 12px; 
-            font-family: 'Oxanium', sans-serif; 
-            font-size: 1rem;
-            font-weight: 700; 
-            cursor: pointer; 
-            transition: 0.2s;
-        }
-        
-        .btn-primary:disabled { 
-            background: #cbd5e1; 
-            cursor: not-allowed;
-        }
-        
-        .result-card { 
-            padding: 16px; 
-            border-radius: 10px; 
-            text-align: center; 
-            margin-top: 16px; 
-            display: none; 
-            font-size: 0.9rem;
-        }
+        :root { --primary: #0284c7; --success: #0d9488; --danger: #ef4444; --bg: #f1f5f9; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); padding: 16px; margin: 0; }
+        .panel { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 16px; margin-bottom: 16px; }
+        .panel-title { font-size: 0.75rem; color: #64748b; font-weight: 700; margin-bottom: 12px; }
+        .display-box { border: 1px dashed #cbd5e1; border-radius: 10px; aspect-ratio: 4/3; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; background-color: #fafafa; }
+        .display-box img, .display-box canvas { width: 100%; height: 100%; object-fit: contain; }
+        .file-input-wrapper { margin-top: 12px; width: 100%; }
+        .btn-primary { background: var(--primary); color: white; border: none; width: 100%; padding: 14px; border-radius: 12px; font-weight: 700; cursor: pointer; }
+        .btn-primary:disabled { background: #cbd5e1; cursor: not-allowed; }
+        .result-card { padding: 16px; border-radius: 10px; text-align: center; margin-top: 16px; display: none; font-size: 0.9rem; }
     </style>
     <script async src="https://cdn.jsdelivr.net/npm/@techstark/opencv-js@4.9.0/dist/opencv.min.js" onload="onOpenCvReady()"></script>
 </head>
@@ -94,13 +24,19 @@
 
     <div class="panel">
         <div class="panel-title">1. รูปแบบกลุ่มจุดอ้างอิง (REFERENCE)</div>
-        <div class="display-box"><img id="refImage"></div>
+        <div class="display-box">
+            <img id="refImage">
+            <canvas id="refCanvas" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; object-fit:contain;"></canvas>
+        </div>
         <input type="file" id="fileInput" class="file-input-wrapper" accept="image/*">
     </div>
 
     <div class="panel">
         <div class="panel-title">2. ภาพถ่ายหน้างาน (TARGET SCAN - Camera)</div>
-        <div class="display-box"><img id="targetImage"></div>
+        <div class="display-box">
+            <img id="targetImage">
+            <canvas id="targetCanvas" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; object-fit:contain;"></canvas>
+        </div>
         <input type="file" id="fileInputTarget" class="file-input-wrapper" accept="image/*" capture="environment">
     </div>
 
@@ -108,26 +44,30 @@
 
     <div id="resultCard" class="result-card">
         <div id="resultText" style="font-weight: 700;"></div>
+        <div id="debugText" style="font-size: 0.8rem; margin-top: 8px; color: #fff;"></div>
     </div>
 
     <script>
         const refImage = document.getElementById('refImage');
         const targetImage = document.getElementById('targetImage');
+        const refCanvas = document.getElementById('refCanvas');
+        const targetCanvas = document.getElementById('targetCanvas');
         const btnScan = document.getElementById('btnScan');
         const resultCard = document.getElementById('resultCard');
         const resultText = document.getElementById('resultText');
+        const debugText = document.getElementById('debugText');
 
         let isReady = false;
 
         function onOpenCvReady() {
             isReady = true;
-            btnScan.innerText = "ตรวจสอบจุด (Mobile Camera Ready)";
+            btnScan.innerText = "ตรวจสอบจุด (Debug Mode)";
             checkReady();
         }
 
-        // [แก้ปัญหา] มือถือโหลดภาพช้า ต้องรอ onload ก่อนถึงจะปลดล็อกปุ่มสแกน
         document.getElementById('fileInput').onchange = (e) => { 
             if(e.target.files[0]) {
+                refCanvas.style.display = 'none'; refImage.style.display = 'block';
                 refImage.onload = () => { checkReady(); };
                 refImage.src = URL.createObjectURL(e.target.files[0]); 
             }
@@ -135,6 +75,7 @@
         
         document.getElementById('fileInputTarget').onchange = (e) => { 
             if(e.target.files[0]) {
+                targetCanvas.style.display = 'none'; targetImage.style.display = 'block';
                 targetImage.onload = () => { checkReady(); };
                 targetImage.src = URL.createObjectURL(e.target.files[0]); 
             }
@@ -148,44 +89,27 @@
             }
         }
 
-        function getResizedMat(imgElement) {
+        function getResizedMatAndDraw(imgElement, canvasElement) {
             let canvas = document.createElement('canvas');
-            let origW = imgElement.naturalWidth || imgElement.width || 320;
-            let origH = imgElement.naturalHeight || imgElement.height || 240;
-            
-            // [ปรับปรุง] เพิ่มขนาดสูงสุดเป็น 1536 เพื่อไม่ให้จุดจิ๋วโดนบีบจนหายไปเวลาถ่ายจากมือถือความละเอียดสูง
+            let origW = imgElement.naturalWidth;
+            let origH = imgElement.naturalHeight;
             let maxDim = 1536; 
-            let w = origW;
-            let h = origH;
+            let w = origW, h = origH;
             
             if (w > maxDim || h > maxDim) {
-                if (w > h) {
-                    h = Math.round((h * maxDim) / w);
-                    w = maxDim;
-                } else {
-                    w = Math.round((w * maxDim) / h);
-                    h = maxDim;
-                }
+                if (w > h) { h = Math.round((h * maxDim) / w); w = maxDim; } 
+                else { w = Math.round((w * maxDim) / h); h = maxDim; }
             }
 
-            canvas.width = w; 
-            canvas.height = h;
-            
+            canvas.width = w; canvas.height = h;
             let ctx = canvas.getContext('2d');
-            ctx.fillStyle = '#ffffff'; 
-            ctx.fillRect(0, 0, w, h);
+            ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, w, h);
             ctx.drawImage(imgElement, 0, 0, w, h);
             
-            let src = cv.imread(canvas);
-            return src;
-        }
-
-        function getDots(imgElement) {
-            let mat = getResizedMat(imgElement);
+            let mat = cv.imread(canvas);
             let rgb = new cv.Mat();
             cv.cvtColor(mat, rgb, cv.COLOR_RGBA2RGB);
 
-            // [ปรับปรุง] คืนค่า Filter กลับมานิดหน่อย (เบอร์ 5) เพื่อลบแสงจ้าสะท้อนจากแฟลชมือถือ แต่ไม่ลบจุด
             let filtered = new cv.Mat();
             cv.bilateralFilter(rgb, filtered, 5, 50, 50);
 
@@ -194,18 +118,13 @@
             
             let hsvPlanes = new cv.MatVector();
             cv.split(hsv, hsvPlanes);
-            
             let vChannel = hsvPlanes.get(2);
-            
             let clahe = new cv.CLAHE(2.0, new cv.Size(8, 8)); 
             clahe.apply(vChannel, vChannel);
-            
             hsvPlanes.set(2, vChannel);
             cv.merge(hsvPlanes, hsv);
             
             let mask = new cv.Mat();
-            // [ปรับปรุงสำคัญ] ขยายช่วงสีให้กว้างขึ้นมากๆ เพื่อรองรับสีซีด สีเพี้ยน หรือถ่ายติดเงา
-            // (Hue 65 ถึง 125 ครอบคลุมเขียวอมฟ้า ไปจนถึงฟ้าอมน้ำเงิน / Saturation ยอมให้ซีดได้ถึง 30)
             let low = new cv.Mat(hsv.rows, hsv.cols, hsv.type(), [65, 30, 30, 0]);
             let high = new cv.Mat(hsv.rows, hsv.cols, hsv.type(), [125, 255, 255, 255]);
             cv.inRange(hsv, low, high, mask);
@@ -216,16 +135,26 @@
             let pts = [];
             let imgArea = mat.cols * mat.rows; 
             
+            // วาดรูปลง Canvas เพื่อ Debug
+            canvasElement.width = w; canvasElement.height = h;
+            let debugCtx = canvasElement.getContext('2d');
+            debugCtx.drawImage(imgElement, 0, 0, w, h);
+
             for (let i = 0; i < contours.size(); ++i) {
                 let rect = cv.boundingRect(contours.get(i));
                 let area = rect.width * rect.height;
                 
                 if (area >= 1 && area <= (imgArea * 0.08)) { 
-                    pts.push({
-                        x: rect.x + rect.width / 2, 
-                        y: rect.y + rect.height / 2,
-                        width: mat.cols 
-                    });
+                    let ptX = rect.x + rect.width / 2;
+                    let ptY = rect.y + rect.height / 2;
+                    pts.push({ x: ptX, y: ptY, width: w, height: h });
+
+                    // วาดวงกลมสีแดงและเป้าเล็ง
+                    debugCtx.beginPath();
+                    debugCtx.arc(ptX, ptY, 15, 0, 2 * Math.PI);
+                    debugCtx.strokeStyle = 'red';
+                    debugCtx.lineWidth = 3;
+                    debugCtx.stroke();
                 }
             }
             
@@ -243,38 +172,33 @@
 
             setTimeout(() => {
                 try {
-                    let p1 = getDots(refImage);
-                    let p2 = getDots(targetImage);
+                    // เปิดใช้งาน Canvas สำหรับแสดงผล Debug
+                    refImage.style.display = 'none'; refCanvas.style.display = 'block';
+                    targetImage.style.display = 'none'; targetCanvas.style.display = 'block';
+
+                    let p1 = getResizedMatAndDraw(refImage, refCanvas);
+                    let p2 = getResizedMatAndDraw(targetImage, targetCanvas);
                     
                     resultCard.style.display = 'block';
                     
-                    if (p1.length === 0) {
-                        resultText.innerText = `FAIL // ไม่พบจุดในภาพอ้างอิงเลย`;
+                    if (p1.length === 0 || p2.length === 0) {
+                        resultText.innerText = `FAIL // ค้นหาจุดไม่พบ`;
+                        debugText.innerText = `Ref พบ: ${p1.length} จุด | Target พบ: ${p2.length} จุด`;
                         resultCard.style.background = 'var(--danger)'; 
-                        resultCard.style.color = 'white';
-                        btnScan.innerText = "ตรวจสอบจุด (Mobile Camera Ready)";
-                        btnScan.disabled = false;
-                        return;
-                    }
-
-                    if (p2.length === 0) {
-                        resultText.innerText = `FAIL // ไม่พบจุดจากการถ่ายกล้องมือถือเลย (ลองปรับมุมไม่ให้สะท้อนแสง)`;
-                        resultCard.style.background = 'var(--danger)'; 
-                        resultCard.style.color = 'white';
-                        btnScan.innerText = "ตรวจสอบจุด (Mobile Camera Ready)";
+                        btnScan.innerText = "ตรวจสอบจุด (Debug Mode)";
                         btnScan.disabled = false;
                         return;
                     }
 
                     let matchCount = 0;
-                    // [ปรับปรุง] เพิ่ม Tolerance (ความคลาดเคลื่อนที่ยอมรับได้) เป็น 10% ของความกว้างภาพ
-                    // เนื่องจากมือถือถ่ายเอียง ทำให้สัดส่วนจุดคลาดเคลื่อนได้ง่ายกว่าสแกนเนอร์
-                    let tolerance = (p1[0].width || 1000) * 0.10; 
+                    // เพิ่มความคลาดเคลื่อนที่ยอมรับได้เป็น 15% เพื่อรองรับการถ่ายรูปที่มีระยะห่างต่างจากต้นฉบับ
+                    let tolerance = (p1[0].width) * 0.15; 
 
                     p1.forEach(pt1 => {
                         let matched = false;
                         p2.forEach(pt2 => {
                             if (!matched) {
+                                // คำนวณระยะห่าง
                                 let dist = Math.hypot(pt1.x - pt2.x, pt1.y - pt2.y);
                                 if (dist <= tolerance) {
                                     matchCount++;
@@ -285,21 +209,20 @@
                     });
 
                     if (matchCount === p1.length) {
-                        resultText.innerText = `PASS // ผ่าน! พบจุดอ้างอิงครบ (${matchCount}/${p1.length} จุด) จากรูปถ่ายหน้างานที่มี ${p2.length} จุด`;
+                        resultText.innerText = `PASS // ผ่าน! พบจุดอ้างอิงครบ (${matchCount}/${p1.length} จุด)`;
                         resultCard.style.background = 'var(--success)'; 
-                        resultCard.style.color = 'white';
                     } else {
-                        resultText.innerText = `FAIL // ตำแหน่งคลาดเคลื่อนหรือหาไม่ครบ (เจอ ${matchCount} จาก ${p1.length} จุด)`;
+                        resultText.innerText = `FAIL // ตำแหน่งพิกัดไม่ตรงกัน`;
                         resultCard.style.background = 'var(--danger)'; 
-                        resultCard.style.color = 'white';
                     }
+                    debugText.innerText = `Ref พบ: ${p1.length} จุด | Target พบ: ${p2.length} จุด | จับคู่พิกัดตรงกัน: ${matchCount} จุด`;
 
                 } catch (err) {
                     console.error("OpenCV Error:", err);
                     alert("เกิดข้อผิดพลาดในการประมวลผล");
                 }
 
-                btnScan.innerText = "ตรวจสอบจุด (Mobile Camera Ready)";
+                btnScan.innerText = "ตรวจสอบจุด (Debug Mode)";
                 btnScan.disabled = false;
             }, 100);
         };
