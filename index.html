@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PatternScan QC VISION (Robust Engine)</title>
+    <title>PatternScan QC VISION (Mobile Camera Optimized)</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Oxanium:wght@700&display=swap');
         
@@ -88,20 +88,18 @@
             font-size: 0.9rem;
         }
     </style>
-    
-    <!-- โหลด OpenCV ผ่าน CDN ทางการ -->
-    <script async src="https://docs.opencv.org/4.x/opencv.js" type="text/javascript"></script>
+    <script async src="https://cdn.jsdelivr.net/npm/@techstark/opencv-js@4.9.0/dist/opencv.min.js" onload="onOpenCvReady()"></script>
 </head>
 <body>
 
     <div class="panel">
         <div class="panel-title">1. รูปแบบกลุ่มจุดอ้างอิง (REFERENCE)</div>
         <div class="display-box"><img id="refImage"></div>
-        <input type="file" id="fileInput" class="file-input-wrapper" accept="image/*" capture="environment">
+        <input type="file" id="fileInput" class="file-input-wrapper" accept="image/*">
     </div>
 
     <div class="panel">
-        <div class="panel-title">2. ภาพตรวจทานหน้างาน (TARGET SCAN)</div>
+        <div class="panel-title">2. ภาพถ่ายหน้างาน (TARGET SCAN - Camera)</div>
         <div class="display-box"><img id="targetImage"></div>
         <input type="file" id="fileInputTarget" class="file-input-wrapper" accept="image/*" capture="environment">
     </div>
@@ -122,45 +120,28 @@
         let isReady = false;
 
         function onOpenCvReady() {
-            if (isReady) return;
             isReady = true;
-            btnScan.innerText = "ตรวจสอบจุด (พร้อมใช้งาน)";
+            btnScan.innerText = "ตรวจสอบจุด (Mobile Camera Ready)";
             checkReady();
         }
 
-        // ระบบตรวจสอบความพร้อมแบบวนลูป
-        let checkInterval = setInterval(() => {
-            if (typeof cv !== 'undefined' && typeof cv.Mat === 'function') {
-                clearInterval(checkInterval);
-                onOpenCvReady();
-            }
-        }, 300);
-
-        // ระบบตัดรอบแจ้งเตือนหากโหลดเกิน 12 วินาที
-        setTimeout(() => {
-            if (!isReady) {
-                clearInterval(checkInterval);
-                btnScan.innerText = "❌ โหลดเอนจินไม่สำเร็จ (ถูกบล็อก/ไม่มีเน็ต)";
-                btnScan.style.background = "var(--danger)";
-            }
-        }, 12000);
-
+        // [แก้ปัญหา] มือถือโหลดภาพช้า ต้องรอ onload ก่อนถึงจะปลดล็อกปุ่มสแกน
         document.getElementById('fileInput').onchange = (e) => { 
             if(e.target.files[0]) {
+                refImage.onload = () => { checkReady(); };
                 refImage.src = URL.createObjectURL(e.target.files[0]); 
-                checkReady(); 
             }
         };
         
         document.getElementById('fileInputTarget').onchange = (e) => { 
             if(e.target.files[0]) {
+                targetImage.onload = () => { checkReady(); };
                 targetImage.src = URL.createObjectURL(e.target.files[0]); 
-                checkReady(); 
             }
         };
 
         function checkReady() { 
-            if (isReady && refImage.src && targetImage.src) {
+            if (isReady && refImage.src && targetImage.src && refImage.naturalWidth > 0 && targetImage.naturalWidth > 0) {
                 btnScan.disabled = false;
             } else {
                 btnScan.disabled = true;
@@ -172,7 +153,8 @@
             let origW = imgElement.naturalWidth || imgElement.width || 320;
             let origH = imgElement.naturalHeight || imgElement.height || 240;
             
-            let maxDim = 1024;
+            // [ปรับปรุง] เพิ่มขนาดสูงสุดเป็น 1536 เพื่อไม่ให้จุดจิ๋วโดนบีบจนหายไปเวลาถ่ายจากมือถือความละเอียดสูง
+            let maxDim = 1536; 
             let w = origW;
             let h = origH;
             
@@ -203,8 +185,9 @@
             let rgb = new cv.Mat();
             cv.cvtColor(mat, rgb, cv.COLOR_RGBA2RGB);
 
+            // [ปรับปรุง] คืนค่า Filter กลับมานิดหน่อย (เบอร์ 5) เพื่อลบแสงจ้าสะท้อนจากแฟลชมือถือ แต่ไม่ลบจุด
             let filtered = new cv.Mat();
-            cv.bilateralFilter(rgb, filtered, 9, 75, 75);
+            cv.bilateralFilter(rgb, filtered, 5, 50, 50);
 
             let hsv = new cv.Mat();
             cv.cvtColor(filtered, hsv, cv.COLOR_RGB2HSV);
@@ -213,6 +196,7 @@
             cv.split(hsv, hsvPlanes);
             
             let vChannel = hsvPlanes.get(2);
+            
             let clahe = new cv.CLAHE(2.0, new cv.Size(8, 8)); 
             clahe.apply(vChannel, vChannel);
             
@@ -220,12 +204,11 @@
             cv.merge(hsvPlanes, hsv);
             
             let mask = new cv.Mat();
-            let low = new cv.Mat(hsv.rows, hsv.cols, hsv.type(), [75, 50, 50, 0]);
-            let high = new cv.Mat(hsv.rows, hsv.cols, hsv.type(), [110, 255, 255, 255]);
+            // [ปรับปรุงสำคัญ] ขยายช่วงสีให้กว้างขึ้นมากๆ เพื่อรองรับสีซีด สีเพี้ยน หรือถ่ายติดเงา
+            // (Hue 65 ถึง 125 ครอบคลุมเขียวอมฟ้า ไปจนถึงฟ้าอมน้ำเงิน / Saturation ยอมให้ซีดได้ถึง 30)
+            let low = new cv.Mat(hsv.rows, hsv.cols, hsv.type(), [65, 30, 30, 0]);
+            let high = new cv.Mat(hsv.rows, hsv.cols, hsv.type(), [125, 255, 255, 255]);
             cv.inRange(hsv, low, high, mask);
-
-            let kernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(3, 3));
-            cv.morphologyEx(mask, mask, cv.MORPH_OPEN, kernel);
             
             let contours = new cv.MatVector();
             cv.findContours(mask, contours, new cv.Mat(), cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
@@ -237,7 +220,7 @@
                 let rect = cv.boundingRect(contours.get(i));
                 let area = rect.width * rect.height;
                 
-                if (area >= (imgArea * 0.000002) && area <= (imgArea * 0.08)) { 
+                if (area >= 1 && area <= (imgArea * 0.08)) { 
                     pts.push({
                         x: rect.x + rect.width / 2, 
                         y: rect.y + rect.height / 2,
@@ -248,7 +231,7 @@
             
             mat.delete(); rgb.delete(); filtered.delete(); hsv.delete(); 
             hsvPlanes.delete(); vChannel.delete(); clahe.delete();
-            mask.delete(); low.delete(); high.delete(); kernel.delete(); contours.delete();
+            mask.delete(); low.delete(); high.delete(); contours.delete();
             
             return pts;
         }
@@ -265,17 +248,28 @@
                     
                     resultCard.style.display = 'block';
                     
-                    if (p1.length !== p2.length || p1.length === 0) {
-                        resultText.innerText = `FAIL // จำนวนจุดไม่เท่ากัน (อ้างอิง: ${p1.length} | สแกน: ${p2.length})`;
+                    if (p1.length === 0) {
+                        resultText.innerText = `FAIL // ไม่พบจุดในภาพอ้างอิงเลย`;
                         resultCard.style.background = 'var(--danger)'; 
                         resultCard.style.color = 'white';
-                        btnScan.innerText = "ตรวจสอบจุด (พร้อมใช้งาน)";
+                        btnScan.innerText = "ตรวจสอบจุด (Mobile Camera Ready)";
+                        btnScan.disabled = false;
+                        return;
+                    }
+
+                    if (p2.length === 0) {
+                        resultText.innerText = `FAIL // ไม่พบจุดจากการถ่ายกล้องมือถือเลย (ลองปรับมุมไม่ให้สะท้อนแสง)`;
+                        resultCard.style.background = 'var(--danger)'; 
+                        resultCard.style.color = 'white';
+                        btnScan.innerText = "ตรวจสอบจุด (Mobile Camera Ready)";
                         btnScan.disabled = false;
                         return;
                     }
 
                     let matchCount = 0;
-                    let tolerance = (p1[0].width || 1000) * 0.07; 
+                    // [ปรับปรุง] เพิ่ม Tolerance (ความคลาดเคลื่อนที่ยอมรับได้) เป็น 10% ของความกว้างภาพ
+                    // เนื่องจากมือถือถ่ายเอียง ทำให้สัดส่วนจุดคลาดเคลื่อนได้ง่ายกว่าสแกนเนอร์
+                    let tolerance = (p1[0].width || 1000) * 0.10; 
 
                     p1.forEach(pt1 => {
                         let matched = false;
@@ -291,11 +285,11 @@
                     });
 
                     if (matchCount === p1.length) {
-                        resultText.innerText = `PASS 100%`;
+                        resultText.innerText = `PASS // ผ่าน! พบจุดอ้างอิงครบ (${matchCount}/${p1.length} จุด) จากรูปถ่ายหน้างานที่มี ${p2.length} จุด`;
                         resultCard.style.background = 'var(--success)'; 
                         resultCard.style.color = 'white';
                     } else {
-                        resultText.innerText = `FAIL // ตำแหน่งคลาดเคลื่อน (เจอ ${matchCount} จาก ${p1.length} จุด)`;
+                        resultText.innerText = `FAIL // ตำแหน่งคลาดเคลื่อนหรือหาไม่ครบ (เจอ ${matchCount} จาก ${p1.length} จุด)`;
                         resultCard.style.background = 'var(--danger)'; 
                         resultCard.style.color = 'white';
                     }
@@ -305,7 +299,7 @@
                     alert("เกิดข้อผิดพลาดในการประมวลผล");
                 }
 
-                btnScan.innerText = "ตรวจสอบจุด (พร้อมใช้งาน)";
+                btnScan.innerText = "ตรวจสอบจุด (Mobile Camera Ready)";
                 btnScan.disabled = false;
             }, 100);
         };
