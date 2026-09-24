@@ -3,231 +3,524 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PatternScan QC VISION (Debug Mode - Safari Fixed)</title>
+    <title>PATTERN_SCAN QC VISION - Strict Tuned</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Oxanium:wght@700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Oxanium:wght@600;700&display=swap');
         
-        :root { --primary: #0284c7; --success: #0d9488; --danger: #ef4444; --bg: #f1f5f9; }
-        body { font-family: 'Inter', sans-serif; background: var(--bg); padding: 16px; margin: 0; }
-        .panel { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 16px; margin-bottom: 16px; }
-        .panel-title { font-size: 0.75rem; color: #64748b; font-weight: 700; margin-bottom: 12px; }
-        .display-box { border: 1px dashed #cbd5e1; border-radius: 10px; aspect-ratio: 4/3; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; background-color: #fafafa; }
-        .display-box img, .display-box canvas { width: 100%; height: 100%; object-fit: contain; }
-        .file-input-wrapper { margin-top: 12px; width: 100%; }
-        .btn-primary { background: var(--primary); color: white; border: none; width: 100%; padding: 14px; border-radius: 12px; font-weight: 700; cursor: pointer; }
-        .btn-primary:disabled { background: #cbd5e1; cursor: not-allowed; }
-        .result-card { padding: 16px; border-radius: 10px; text-align: center; margin-top: 16px; display: none; font-size: 0.9rem; }
+        :root { 
+            --primary: #0284c7; 
+            --primary-hover: #0369a1;
+            --success: #059669; 
+            --danger: #dc2626; 
+            --bg: #f8fafc; 
+            --card-bg: #ffffff;
+            --text: #1e293b;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+        }
+        
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background: var(--bg); 
+            color: var(--text);
+            padding: 16px; 
+            margin: 0; 
+            max-width: 480px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        h1 {
+            font-family: 'Oxanium', sans-serif;
+            font-size: 1.25rem;
+            text-align: center;
+            margin-bottom: 16px;
+            color: #0369a1;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+        
+        .panel { 
+            background: var(--card-bg); 
+            border: 1px solid var(--border); 
+            border-radius: 16px; 
+            padding: 16px; 
+            margin-bottom: 16px; 
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        }
+        
+        .panel-title { 
+            font-size: 0.8rem; 
+            color: var(--text-muted); 
+            font-weight: 600; 
+            margin-bottom: 8px; 
+            font-family: 'Oxanium', sans-serif; 
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .display-box { 
+            border: 2px dashed #cbd5e1; 
+            border-radius: 12px; 
+            aspect-ratio: 4/3; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            overflow: hidden; 
+            position: relative; 
+            background-color: #f1f5f9;
+        }
+        
+        .display-box img, .display-box video, .display-box canvas { 
+            width: 100%; 
+            height: 100%; 
+            object-fit: contain; 
+            position: absolute;
+        }
+        
+        .file-input-wrapper {
+            margin-top: 8px;
+            width: 100%;
+            font-size: 0.85rem;
+            color: var(--text);
+            padding: 8px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            box-sizing: border-box;
+        }
+
+        .controls-row {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        
+        .btn { 
+            background: var(--primary); 
+            color: white; 
+            border: none; 
+            width: 100%; 
+            padding: 12px; 
+            border-radius: 10px; 
+            font-family: 'Inter', sans-serif; 
+            font-size: 0.95rem;
+            font-weight: 600; 
+            cursor: pointer; 
+            transition: background 0.2s, transform 0.1s;
+            box-shadow: 0 2px 4px rgba(2, 132, 199, 0.2);
+        }
+
+        .btn:hover {
+            background: var(--primary-hover);
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        .btn-secondary {
+            background: #475569;
+            box-shadow: 0 2px 4px rgba(71, 85, 105, 0.2);
+        }
+        
+        .btn-secondary:hover {
+            background: #334155;
+        }
+
+        .btn:disabled { 
+            background: #cbd5e1; 
+            color: #94a3b8;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+        
+        .status-bar {
+            font-size: 0.85rem;
+            text-align: center;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+            font-weight: 500;
+        }
+
+        /* Popup Styles */
+        .popup-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.6);
+            z-index: 999;
+            backdrop-filter: blur(4px);
+        }
+        .popup-box {
+            display: none;
+            position: fixed;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 24px;
+            width: 85%;
+            max-width: 350px;
+            z-index: 1000;
+            text-align: center;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        .popup-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+            font-family: 'Oxanium', sans-serif;
+        }
+        .popup-message {
+            font-size: 0.95rem;
+            color: var(--text);
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+        .popup-close-btn {
+            background: #e2e8f0;
+            color: var(--text);
+            border: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+            width: 100%;
+        }
+        .popup-close-btn:hover {
+            background: #cbd5e1;
+        }
+        .text-success { color: var(--success); }
+        .text-danger { color: var(--danger); }
     </style>
+    
+    <script async src="https://docs.opencv.org/4.x/opencv.js" type="text/javascript"></script>
 </head>
 <body>
 
-    <div class="panel">
-        <div class="panel-title">1. รูปแบบกลุ่มจุดอ้างอิง (REFERENCE)</div>
-        <div class="display-box">
-            <img id="refImage">
-            <canvas id="refCanvas" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; object-fit:contain;"></canvas>
-        </div>
-        <input type="file" id="fileInput" class="file-input-wrapper" accept="image/*">
-    </div>
+    <h1>SECURITY SCAN</h1>
 
     <div class="panel">
-        <div class="panel-title">2. ภาพถ่ายหน้างาน (TARGET SCAN - Camera)</div>
+        <div class="panel-title">ภาพสัญลักษณ์ต้นฉบับ</div>
+        <div class="display-box"><canvas id="refCanvas"></canvas></div>
+        <input type="file" id="fileInputRef" class="file-input-wrapper" accept="image/*">
+    </div>
+
+    <div class="panel">
+        <div class="panel-title">ภาพเปรียบเทียบ</div>
         <div class="display-box">
-            <img id="targetImage">
-            <canvas id="targetCanvas" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; object-fit:contain;"></canvas>
+            <video id="videoElement" autoplay playsinline muted style="display:none;"></video>
+            <img id="targetImage" alt="Target File" style="display:none;">
+            <canvas id="outputCanvas"></canvas>
         </div>
-        <input type="file" id="fileInputTarget" class="file-input-wrapper" accept="image/*" capture="environment">
-    </div>
-
-    <button class="btn-primary" id="btnScan" disabled>กำลังโหลดเอนจิน...</button>
-
-    <div id="resultCard" class="result-card">
-        <div id="resultText" style="font-weight: 700;"></div>
-        <div id="debugText" style="font-size: 0.8rem; margin-top: 8px; color: #64748b;"></div>
-    </div>
-
-    <!-- โค้ดส่วนลอจิกทั้งหมด -->
-    <script>
-        const refImage = document.getElementById('refImage');
-        const targetImage = document.getElementById('targetImage');
-        const refCanvas = document.getElementById('refCanvas');
-        const targetCanvas = document.getElementById('targetCanvas');
-        const btnScan = document.getElementById('btnScan');
-        const resultCard = document.getElementById('resultCard');
-        const resultText = document.getElementById('resultText');
-        const debugText = document.getElementById('debugText');
-
-        let isReady = false;
-
-        // ฟังก์ชันนี้จะพร้อมถูกเรียกเสมอ เพราะเราย้ายโหลด OpenCV ไปไว้ล่างสุด
-        function onOpenCvReady() {
-            isReady = true;
-            btnScan.innerText = "ตรวจสอบจุด (Debug Mode)";
-            checkReady();
-        }
-
-        document.getElementById('fileInput').onchange = (e) => { 
-            if(e.target.files[0]) {
-                refCanvas.style.display = 'none'; refImage.style.display = 'block';
-                refImage.onload = () => { checkReady(); };
-                refImage.src = URL.createObjectURL(e.target.files[0]); 
-            }
-        };
         
-        document.getElementById('fileInputTarget').onchange = (e) => { 
+        <div class="controls-row">
+            <button class="btn btn-secondary" id="btnToggleCam">เปิดกล้อง</button>
+        </div>
+        
+        <div style="margin-top: 12px;">
+            <label class="panel-title" style="display:block; margin-bottom:4px;">เลือกไฟล์ภาพจากเครื่อง:</label>
+            <input type="file" id="fileInputTarget" class="file-input-wrapper" accept="image/*">
+        </div>
+
+        <div style="margin-top: 12px;">
+            <button class="btn" id="btnScan">เริ่มสแกน</button>
+        </div>
+    </div>
+
+    <div class="status-bar" id="statusBar">สถานะ: กำลังโหลด OpenCV Engine...</div>
+
+    <div class="popup-overlay" id="popupOverlay"></div>
+    <div class="popup-box" id="popupBox">
+        <div class="popup-title" id="popupTitle">ผลการสแกน</div>
+        <div class="popup-message" id="popupMessage"></div>
+        <button class="popup-close-btn" onclick="closePopup()">ปิดหน้าต่าง</button>
+    </div>
+
+    <script>
+        const refCanvas = document.getElementById('refCanvas');
+        const videoElement = document.getElementById('videoElement');
+        const targetImage = document.getElementById('targetImage');
+        const outputCanvas = document.getElementById('outputCanvas');
+        const btnScan = document.getElementById('btnScan');
+        const btnToggleCam = document.getElementById('btnToggleCam');
+        const statusBar = document.getElementById('statusBar');
+
+        const popupOverlay = document.getElementById('popupOverlay');
+        const popupBox = document.getElementById('popupBox');
+        const popupTitle = document.getElementById('popupTitle');
+        const popupMessage = document.getElementById('popupMessage');
+
+        let isCvReady = false;
+        let cameraStream = null;
+        let isCameraActive = false;
+        let activeSourceType = null;
+        let templateMat = null;
+
+        let checkInterval = setInterval(() => {
+            if (typeof cv !== 'undefined' && typeof cv.Mat === 'function') {
+                clearInterval(checkInterval);
+                isCvReady = true;
+                statusBar.innerText = "สถานะ: พร้อมใช้งาน (โหมดความแม่นยำสูง)";
+            }
+        }, 300);
+
+        document.getElementById('fileInputRef').onchange = (e) => { 
             if(e.target.files[0]) {
-                targetCanvas.style.display = 'none'; targetImage.style.display = 'block';
-                targetImage.onload = () => { checkReady(); };
-                targetImage.src = URL.createObjectURL(e.target.files[0]); 
+                if (!isCvReady) {
+                    alert("ระบบกำลังโหลด OpenCV Engine กรุณารอสักครู่แล้วเลือกไฟล์ใหม่อีกครั้ง");
+                    return;
+                }
+                let reader = new FileReader();
+                reader.onload = function(event) {
+                    let img = new Image();
+                    img.onload = function() {
+                        if (templateMat) templateMat.delete();
+                        templateMat = matFromElement(img, 1000);
+                        cv.imshow('refCanvas', templateMat);
+                    }
+                    img.src = event.target.result;
+                }
+                reader.readAsDataURL(e.target.files[0]);
             }
         };
 
-        function checkReady() { 
-            if (isReady && refImage.src && targetImage.src && refImage.naturalWidth > 0 && targetImage.naturalWidth > 0) {
-                btnScan.disabled = false;
-            } else {
-                btnScan.disabled = true;
+        document.getElementById('fileInputTarget').onchange = (e) => {
+            if (e.target.files[0]) {
+                if (isCameraActive) { stopCamera(); }
+                
+                targetImage.src = URL.createObjectURL(e.target.files[0]);
+                targetImage.onload = () => {
+                    activeSourceType = 'file';
+                    let canvasCtx = outputCanvas.getContext('2d');
+                    outputCanvas.width = targetImage.naturalWidth;
+                    outputCanvas.height = targetImage.naturalHeight;
+                    canvasCtx.drawImage(targetImage, 0, 0);
+                    outputCanvas.style.display = 'block';
+                    targetImage.style.display = 'none';
+                    videoElement.style.display = 'none';
+                };
             }
+        };
+
+        function stopCamera() {
+            if (cameraStream) {
+                cameraStream.getTracks().forEach(track => track.stop());
+            }
+            videoElement.srcObject = null;
+            isCameraActive = false;
+            btnToggleCam.innerText = "เปิดกล้อง";
+            btnToggleCam.style.background = "#475569";
         }
 
-        function getResizedMatAndDraw(imgElement, canvasElement) {
-            let canvas = document.createElement('canvas');
-            let origW = imgElement.naturalWidth;
-            let origH = imgElement.naturalHeight;
-            let maxDim = 1536; 
-            let w = origW, h = origH;
-            
-            if (w > maxDim || h > maxDim) {
-                if (w > h) { h = Math.round((h * maxDim) / w); w = maxDim; } 
-                else { w = Math.round((w * maxDim) / h); h = maxDim; }
+        btnToggleCam.onclick = async () => {
+            if (!isCameraActive) {
+                try {
+                    document.getElementById('fileInputTarget').value = "";
+                    const constraints = {
+                        video: {
+                            facingMode: { ideal: "environment" },
+                            width: { ideal: 1280 },
+                            height: { ideal: 720 }
+                        }
+                    };
+                    cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
+                    videoElement.srcObject = cameraStream;
+                    videoElement.style.display = 'block';
+                    targetImage.style.display = 'none';
+                    outputCanvas.style.display = 'none';
+                    
+                    isCameraActive = true;
+                    activeSourceType = 'camera';
+                    btnToggleCam.innerText = "ปิดกล้อง Live";
+                    btnToggleCam.style.background = "var(--danger)";
+                } catch (err) {
+                    alert("ไม่สามารถเปิดกล้องได้: " + err.message);
+                }
+            } else {
+                stopCamera();
+                activeSourceType = null;
             }
+        };
 
-            canvas.width = w; canvas.height = h;
-            let ctx = canvas.getContext('2d');
-            ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, w, h);
-            ctx.drawImage(imgElement, 0, 0, w, h);
-            
-            let mat = cv.imread(canvas);
-            let rgb = new cv.Mat();
-            cv.cvtColor(mat, rgb, cv.COLOR_RGBA2RGB);
+        function matFromElement(element, maxDim = 1000) {
+            let canvas = document.createElement('canvas');
+            let w = element.naturalWidth || element.videoWidth || element.width;
+            let h = element.naturalHeight || element.videoHeight || element.height;
 
-            let filtered = new cv.Mat();
-            cv.bilateralFilter(rgb, filtered, 5, 50, 50);
-
-            let hsv = new cv.Mat();
-            cv.cvtColor(filtered, hsv, cv.COLOR_RGB2HSV);
-            
-            let hsvPlanes = new cv.MatVector();
-            cv.split(hsv, hsvPlanes);
-            let vChannel = hsvPlanes.get(2);
-            let clahe = new cv.CLAHE(2.0, new cv.Size(8, 8)); 
-            clahe.apply(vChannel, vChannel);
-            hsvPlanes.set(2, vChannel);
-            cv.merge(hsvPlanes, hsv);
-            
-            let mask = new cv.Mat();
-            let low = new cv.Mat(hsv.rows, hsv.cols, hsv.type(), [65, 30, 30, 0]);
-            let high = new cv.Mat(hsv.rows, hsv.cols, hsv.type(), [125, 255, 255, 255]);
-            cv.inRange(hsv, low, high, mask);
-            
-            let contours = new cv.MatVector();
-            cv.findContours(mask, contours, new cv.Mat(), cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
-            
-            let pts = [];
-            let imgArea = mat.cols * mat.rows; 
-            
-            canvasElement.width = w; canvasElement.height = h;
-            let debugCtx = canvasElement.getContext('2d');
-            debugCtx.drawImage(imgElement, 0, 0, w, h);
-
-            for (let i = 0; i < contours.size(); ++i) {
-                let rect = cv.boundingRect(contours.get(i));
-                let area = rect.width * rect.height;
-                
-                if (area >= 1 && area <= (imgArea * 0.08)) { 
-                    let ptX = rect.x + rect.width / 2;
-                    let ptY = rect.y + rect.height / 2;
-                    pts.push({ x: ptX, y: ptY, width: w, height: h });
-
-                    debugCtx.beginPath();
-                    debugCtx.arc(ptX, ptY, 15, 0, 2 * Math.PI);
-                    debugCtx.strokeStyle = 'red';
-                    debugCtx.lineWidth = 3;
-                    debugCtx.stroke();
+            if (w > maxDim || h > maxDim) {
+                if (w > h) {
+                    h = Math.round((h * maxDim) / w);
+                    w = maxDim;
+                } else {
+                    w = Math.round((w * maxDim) / h);
+                    h = maxDim;
                 }
             }
-            
-            mat.delete(); rgb.delete(); filtered.delete(); hsv.delete(); 
-            hsvPlanes.delete(); vChannel.delete(); clahe.delete();
-            mask.delete(); low.delete(); high.delete(); contours.delete();
-            
-            return pts;
+            canvas.width = w;
+            canvas.height = h;
+            let ctx = canvas.getContext('2d');
+            ctx.drawImage(element, 0, 0, w, h);
+            return cv.imread(canvas);
+        }
+
+        function closePopup() {
+            popupOverlay.style.display = 'none';
+            popupBox.style.display = 'none';
         }
 
         btnScan.onclick = () => {
-            resultCard.style.display = 'none';
-            btnScan.innerText = "กำลังประมวลผล...";
+            if (!isCvReady) {
+                alert("ระบบกำลังโหลด OpenCV Engine กรุณารอสักครู่");
+                return;
+            }
+            if (!templateMat) {
+                alert("กรุณาเลือก 'ภาพสัญลักษณ์ต้นฉบับ' ก่อนทำการสแกน");
+                return;
+            }
+            if (!activeSourceType) {
+                alert("กรุณาเปิดกล้องหรือเลือกไฟล์ภาพเปรียบเทียบก่อนทำการสแกน");
+                return;
+            }
+
+            let originalText = btnScan.innerText;
+            btnScan.innerText = "กำลังประมวลผล Feature AI...";
             btnScan.disabled = true;
 
             setTimeout(() => {
                 try {
-                    refImage.style.display = 'none'; refCanvas.style.display = 'block';
-                    targetImage.style.display = 'none'; targetCanvas.style.display = 'block';
+                    let targetSourceElement = isCameraActive ? videoElement : outputCanvas;
+                    let targetMat = matFromElement(targetSourceElement, 1000);
 
-                    let p1 = getResizedMatAndDraw(refImage, refCanvas);
-                    let p2 = getResizedMatAndDraw(targetImage, targetCanvas);
-                    
-                    resultCard.style.display = 'block';
-                    
-                    if (p1.length === 0 || p2.length === 0) {
-                        resultText.innerText = `FAIL // ค้นหาจุดไม่พบ`;
-                        debugText.innerText = `Ref พบ: ${p1.length} จุด | Target พบ: ${p2.length} จุด`;
-                        resultCard.style.background = 'var(--danger)'; 
-                        resultCard.style.color = 'white';
-                        btnScan.innerText = "ตรวจสอบจุด (Debug Mode)";
-                        btnScan.disabled = false;
-                        return;
-                    }
+                    let grayTempl = new cv.Mat();
+                    let grayTarget = new cv.Mat();
+                    cv.cvtColor(templateMat, grayTempl, cv.COLOR_RGBA2GRAY);
+                    cv.cvtColor(targetMat, grayTarget, cv.COLOR_RGBA2GRAY);
 
-                    let matchCount = 0;
-                    let tolerance = (p1[0].width) * 0.15; 
+                    let orb = new cv.ORB(5000);
+                    let kp1 = new cv.KeyPointVector();
+                    let kp2 = new cv.KeyPointVector();
+                    let des1 = new cv.Mat();
+                    let des2 = new cv.Mat();
 
-                    p1.forEach(pt1 => {
-                        let matched = false;
-                        p2.forEach(pt2 => {
-                            if (!matched) {
-                                let dist = Math.hypot(pt1.x - pt2.x, pt1.y - pt2.y);
-                                if (dist <= tolerance) {
-                                    matchCount++;
-                                    matched = true;
-                                }
+                    orb.detectAndCompute(grayTempl, new cv.Mat(), kp1, des1);
+                    orb.detectAndCompute(grayTarget, new cv.Mat(), kp2, des2);
+
+                    let resultDisplay = targetMat.clone();
+                    let isPass = false;
+                    let matchPercent = 0;
+
+                    if (!des1.empty() && !des2.empty() && kp1.size() > 10) {
+                        let bf = new cv.BFMatcher(cv.NORM_HAMMING, true);
+                        let matches = new cv.DMatchVector();
+                        bf.match(des1, des2, matches);
+
+                        let goodMatches = [];
+                        for (let i = 0; i < matches.size(); i++) {
+                            if (matches.get(i).distance < 45) {
+                                goodMatches.push(matches.get(i));
                             }
-                        });
-                    });
+                        }
 
-                    if (matchCount === p1.length) {
-                        resultText.innerText = `PASS // ผ่าน! พบจุดอ้างอิงครบ (${matchCount}/${p1.length} จุด)`;
-                        resultCard.style.background = 'var(--success)'; 
-                        resultCard.style.color = 'white';
+                        let inlierCount = 0;
+
+                        if (goodMatches.length >= 15) {
+                            let srcPoints = [];
+                            let dstPoints = [];
+
+                            for (let i = 0; i < goodMatches.length; i++) {
+                                srcPoints.push(kp1.get(goodMatches[i].queryIdx).pt.x);
+                                srcPoints.push(kp1.get(goodMatches[i].queryIdx).pt.y);
+                                dstPoints.push(kp2.get(goodMatches[i].trainIdx).pt.x);
+                                dstPoints.push(kp2.get(goodMatches[i].trainIdx).pt.y);
+                            }
+
+                            let srcMat = cv.matFromArray(goodMatches.length, 1, cv.CV_32FC2, srcPoints);
+                            let dstMat = cv.matFromArray(goodMatches.length, 1, cv.CV_32FC2, dstPoints);
+                            let mask = new cv.Mat();
+
+                            let H = cv.findHomography(srcMat, dstMat, cv.RANSAC, 4.0, mask);
+
+                            if (!H.empty()) {
+                                for (let i = 0; i < mask.rows; i++) {
+                                    if (mask.data[i] !== 0) {
+                                        inlierCount++;
+                                        let pt = kp2.get(goodMatches[i].trainIdx).pt;
+                                        cv.circle(resultDisplay, pt, 4, new cv.Scalar(0, 255, 0, 255), -1);
+                                    }
+                                }
+
+                                if (inlierCount >= 20) {
+                                    let objCorners = cv.matFromArray(4, 1, cv.CV_32FC2, [
+                                        0, 0,
+                                        templateMat.cols, 0,
+                                        templateMat.cols, templateMat.rows,
+                                        0, templateMat.rows
+                                    ]);
+                                    let sceneCorners = new cv.Mat();
+                                    cv.perspectiveTransform(objCorners, sceneCorners, H);
+
+                                    for (let i = 0; i < 4; i++) {
+                                        let p1 = new cv.Point(sceneCorners.data32F[i * 2], sceneCorners.data32F[i * 2 + 1]);
+                                        let p2 = new cv.Point(sceneCorners.data32F[((i + 1) % 4) * 2], sceneCorners.data32F[((i + 1) % 4) * 2 + 1]);
+                                        cv.line(resultDisplay, p1, p2, new cv.Scalar(0, 255, 0, 255), 3);
+                                    }
+                                    objCorners.delete(); sceneCorners.delete();
+                                }
+                                H.delete();
+                            }
+                            srcMat.delete(); dstMat.delete(); mask.delete();
+                        }
+
+                        let targetInliers = 80; 
+                        matchPercent = Math.min(100, (inlierCount / targetInliers) * 100);
+                        let threshold = 50.0; 
+                        
+                        isPass = (matchPercent >= threshold) && (inlierCount >= 35);
+
+                        if (!isPass && matchPercent >= threshold) {
+                            matchPercent = 49.9;
+                        }
+
+                        if (isPass) {
+                            popupTitle.innerHTML = `<span class="text-success">✅ PASS // ผ่านเกณฑ์</span>`;
+                            popupMessage.innerHTML = `ตรวจพบลวดลายถูกต้องตรงกัน<br><br>คะแนนความเหมือน: <br><span class="text-success" style="font-size:1.8rem; font-weight:bold;">${matchPercent.toFixed(1)}%</span><br><span style="font-size:0.8rem; color:#64748b;">(${inlierCount} จุดเด่นที่ตรงกัน)</span>`;
+                        } else {
+                            popupTitle.innerHTML = `<span class="text-danger">❌ FAIL // ไม่ผ่านเกณฑ์</span>`;
+                            popupMessage.innerHTML = `ไม่พบลวดลายที่ตรงกันมากพอ<br><span style="font-size:0.8rem; color:#64748b;">(ต้องการ Inliers ขั้นต่ำ 35 จุด)</span><br><br>คะแนนความเหมือน: <br><span class="text-danger" style="font-size:1.8rem; font-weight:bold;">${matchPercent.toFixed(1)}%</span><br><span style="font-size:0.8rem; color:#64748b;">(${inlierCount} จุดเด่นที่ตรงกัน)</span>`;
+                        }
+
+                        matches.delete(); bf.delete();
                     } else {
-                        resultText.innerText = `FAIL // ตำแหน่งพิกัดไม่ตรงกัน`;
-                        resultCard.style.background = 'var(--danger)'; 
-                        resultCard.style.color = 'white';
+                        popupTitle.innerHTML = `<span class="text-danger">⚠️ ERROR</span>`;
+                        popupMessage.innerHTML = `ไม่สามารถสกัดจุดเด่นจากภาพได้<br>โปรดลองเปลี่ยนภาพหรือปรับแสง`;
                     }
-                    debugText.innerText = `Ref พบ: ${p1.length} จุด | Target พบ: ${p2.length} จุด | จับคู่พิกัดตรงกัน: ${matchCount} จุด`;
+
+                    cv.imshow('outputCanvas', resultDisplay);
+                    videoElement.style.display = 'none';
+                    outputCanvas.style.display = 'block';
+
+                    popupOverlay.style.display = 'block';
+                    popupBox.style.display = 'block';
+
+                    targetMat.delete(); grayTempl.delete(); grayTarget.delete(); resultDisplay.delete();
+                    kp1.delete(); kp2.delete(); des1.delete(); des2.delete(); orb.delete();
 
                 } catch (err) {
-                    console.error("OpenCV Error:", err);
-                    alert("เกิดข้อผิดพลาดในการประมวลผล");
+                    console.error(err);
+                    alert("เกิดข้อผิดพลาดในระบบ Feature Vision: " + err.message);
                 }
 
-                btnScan.innerText = "ตรวจสอบจุด (Debug Mode)";
+                btnScan.innerText = originalText;
                 btnScan.disabled = false;
             }, 100);
         };
     </script>
-
-    <!-- [ย้ายมาบรรทัดสุดท้าย] การันตีว่าฟังก์ชัน onOpenCvReady ด้านบนถูกเตรียมไว้เรียบร้อยแล้ว -->
-    <script async src="https://cdn.jsdelivr.net/npm/@techstark/opencv-js@4.9.0/dist/opencv.min.js" onload="onOpenCvReady()"></script>
 </body>
 </html>
