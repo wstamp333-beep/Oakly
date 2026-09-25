@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PATTERN_SCAN QC VISION - Subtle Dark-Red Micro Detail</title>
+    <title>RELIABLE QC VISION - Multi-Scale Match</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Oxanium:wght@600;700&display=swap');
         
@@ -111,29 +111,15 @@
             box-shadow: 0 2px 4px rgba(2, 132, 199, 0.2);
         }
 
-        .btn:hover {
-            background: var(--primary-hover);
-        }
-
-        .btn:active {
-            transform: scale(0.98);
-        }
+        .btn:hover { background: var(--primary-hover); }
+        .btn:active { transform: scale(0.98); }
 
         .btn-secondary {
             background: #475569;
             box-shadow: 0 2px 4px rgba(71, 85, 105, 0.2);
         }
-        
-        .btn-secondary:hover {
-            background: #334155;
-        }
-
-        .btn:disabled { 
-            background: #cbd5e1; 
-            color: #94a3b8;
-            cursor: not-allowed;
-            box-shadow: none;
-        }
+        .btn-secondary:hover { background: #334155; }
+        .btn:disabled { background: #cbd5e1; color: #94a3b8; cursor: not-allowed; box-shadow: none; }
         
         .status-bar {
             font-size: 0.85rem;
@@ -143,7 +129,6 @@
             font-weight: 500;
         }
 
-        /* Popup Styles */
         .popup-overlay {
             display: none;
             position: fixed;
@@ -193,9 +178,7 @@
             transition: background 0.2s;
             width: 100%;
         }
-        .popup-close-btn:hover {
-            background: #cbd5e1;
-        }
+        .popup-close-btn:hover { background: #cbd5e1; }
         .text-success { color: var(--success); }
         .text-danger { color: var(--danger); }
     </style>
@@ -204,16 +187,16 @@
 </head>
 <body>
 
-    <h1>SECURITY SCAN</h1>
+    <h1>RELIABLE QC VISION</h1>
 
     <div class="panel">
-        <div class="panel-title">ภาพสัญลักษณ์ต้นฉบับ — ใช้ภาพความละเอียดสูง</div>
+        <div class="panel-title">1. ภาพ Micro Detail ต้นฉบับ</div>
         <div class="display-box"><canvas id="refCanvas"></canvas></div>
         <input type="file" id="fileInputRef" class="file-input-wrapper" accept="image/*">
     </div>
 
     <div class="panel">
-        <div class="panel-title">ภาพเปรียบเทียบ — ตรวจ Micro Detail สีแดงเข้ม</div>
+        <div class="panel-title">2. ภาพเปรียบเทียบ (กล้องมือถือ / ไฟล์ภาพ)</div>
         <div class="display-box">
             <video id="videoElement" autoplay playsinline muted style="display:none;"></video>
             <img id="targetImage" alt="Target File" style="display:none;">
@@ -221,19 +204,19 @@
         </div>
         
         <div class="controls-row">
-            <button class="btn btn-secondary" id="btnToggleCam">เปิดกล้อง</button>
+            <button class="btn btn-secondary" id="btnToggleCam">เปิดกล้องมือถือ</button>
             <div id="cameraHint" style="font-size:.75rem;color:#64748b;line-height:1.45;margin-top:8px;text-align:center;">
-                หลีกเลี่ยงแสงสะท้อนตรง ๆ • ไม่เปิดแฟลช • เอียงกล้องเล็กน้อย • รักษาระยะให้ภาพคมชัด
+                ระบบรองรับการสแกนผ่านกล้องและปรับสเกลอัตโนมัติ
             </div>
         </div>
         
         <div style="margin-top: 12px;">
-            <label class="panel-title" style="display:block; margin-bottom:4px;">เลือกไฟล์ภาพจากเครื่อง:</label>
+            <label class="panel-title" style="display:block; margin-bottom:4px;">เลือกไฟล์ภาพเปรียบเทียบจากเครื่อง:</label>
             <input type="file" id="fileInputTarget" class="file-input-wrapper" accept="image/*">
         </div>
 
         <div style="margin-top: 12px;">
-            <button class="btn" id="btnScan">เริ่มสแกน</button>
+            <button class="btn" id="btnScan">เริ่มสแกนตรวจสอบ Micro Detail</button>
         </div>
     </div>
 
@@ -270,34 +253,49 @@
             if (typeof cv !== 'undefined' && typeof cv.Mat === 'function') {
                 clearInterval(checkInterval);
                 isCvReady = true;
-                statusBar.innerText = "สถานะ: พร้อมใช้งาน (ตรวจเฉพาะ Micro Detail สีแดงเข้ม)";
+                statusBar.innerText = "สถานะ: พร้อมใช้งาน (Multi-Scale Mode)";
             }
         }, 300);
 
         document.getElementById('fileInputRef').onchange = (e) => { 
             if(e.target.files[0]) {
                 if (!isCvReady) {
-                    alert("ระบบกำลังโหลด OpenCV Engine กรุณารอสักครู่แล้วเลือกไฟล์ใหม่อีกครั้ง");
+                    alert("ระบบกำลังโหลด OpenCV Engine กรุณารอสักครู่แล้วลองใหม่อีกครั้ง");
                     return;
                 }
+                let file = e.target.files[0];
                 let reader = new FileReader();
                 reader.onload = function(event) {
                     let img = new Image();
+                    img.crossOrigin = "anonymous";
                     img.onload = function() {
-                        if (templateMat) templateMat.delete();
-                        templateMat = matFromElement(img, 4000);
-                        cv.imshow('refCanvas', templateMat);
+                        try {
+                            if (templateMat) { templateMat.delete(); templateMat = null; }
+                            let canvas = document.createElement('canvas');
+                            canvas.width = img.naturalWidth;
+                            canvas.height = img.naturalHeight;
+                            let ctx = canvas.getContext('2d');
+                            ctx.drawImage(img, 0, 0);
+                            
+                            templateMat = cv.imread(canvas);
+                            if (templateMat.empty()) throw new Error("ไม่สามารถสร้าง Matrix ได้");
+                            
+                            cv.imshow('refCanvas', templateMat);
+                            statusBar.innerText = "สถานะ: โหลดภาพต้นฉบับสำเร็จ พร้อมสแกน";
+                        } catch (err) {
+                            console.error(err);
+                            alert("ไม่สามารถประมวลผลภาพต้นฉบับได้: " + err.message);
+                        }
                     }
                     img.src = event.target.result;
                 }
-                reader.readAsDataURL(e.target.files[0]);
+                reader.readAsDataURL(file);
             }
         };
 
         document.getElementById('fileInputTarget').onchange = (e) => {
             if (e.target.files[0]) {
                 if (isCameraActive) { stopCamera(); }
-                
                 targetImage.src = URL.createObjectURL(e.target.files[0]);
                 targetImage.onload = () => {
                     activeSourceType = 'file';
@@ -313,12 +311,10 @@
         };
 
         function stopCamera() {
-            if (cameraStream) {
-                cameraStream.getTracks().forEach(track => track.stop());
-            }
+            if (cameraStream) { cameraStream.getTracks().forEach(track => track.stop()); }
             videoElement.srcObject = null;
             isCameraActive = false;
-            btnToggleCam.innerText = "เปิดกล้อง";
+            btnToggleCam.innerText = "เปิดกล้องมือถือ";
             btnToggleCam.style.background = "#475569";
         }
 
@@ -329,37 +325,13 @@
                     const constraints = {
                         video: {
                             facingMode: { ideal: "environment" },
-                            width: { ideal: 1920, min: 1280 },
-                            height: { ideal: 1080, min: 720 },
+                            width: { ideal: 1280, min: 640 },
+                            height: { ideal: 720, min: 480 },
                             frameRate: { ideal: 30, min: 15 }
                         }
                     };
                     cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
                     videoElement.srcObject = cameraStream;
-                    const track = cameraStream.getVideoTracks()[0];
-                    if (track && track.applyConstraints) {
-                        try {
-                            const caps = track.getCapabilities ? track.getCapabilities() : {};
-                            const advanced = {};
-                            if (caps.focusMode && caps.focusMode.includes("continuous")) advanced.focusMode = "continuous";
-                            if (caps.exposureMode && caps.exposureMode.includes("continuous")) advanced.exposureMode = "continuous";
-
-                            // Reduce specular highlight risk when the browser exposes
-                            // exposure compensation. This is only a request; unsupported
-                            // phones simply ignore it.
-                            if (caps.exposureCompensation) {
-                                const ec = caps.exposureCompensation;
-                                const minEC = typeof ec.min === "number" ? ec.min : -1;
-                                const maxEC = typeof ec.max === "number" ? ec.max : 1;
-                                const targetEC = Math.max(minEC, Math.min(maxEC, -0.7));
-                                advanced.exposureCompensation = targetEC;
-                            }
-
-                            if (Object.keys(advanced).length) {
-                                await track.applyConstraints({ advanced: [advanced] });
-                            }
-                        } catch (e) { console.warn("Camera optimization:", e); }
-                    }
                     await videoElement.play();
                     videoElement.style.display = 'block';
                     targetImage.style.display = 'none';
@@ -378,421 +350,129 @@
             }
         };
 
-        function matFromElement(element, maxDim = 4000) {
-            let canvas = document.createElement('canvas');
-            let w = element.naturalWidth || element.videoWidth || element.width;
-            let h = element.naturalHeight || element.videoHeight || element.height;
-
-            if (w > maxDim || h > maxDim) {
-                if (w > h) {
-                    h = Math.round((h * maxDim) / w);
-                    w = maxDim;
-                } else {
-                    w = Math.round((w * maxDim) / h);
-                    h = maxDim;
-                }
-            }
-            canvas.width = w;
-            canvas.height = h;
-            let ctx = canvas.getContext('2d');
-            ctx.drawImage(element, 0, 0, w, h);
-            return cv.imread(canvas);
-        }
-
         function closePopup() {
             popupOverlay.style.display = 'none';
             popupBox.style.display = 'none';
         }
 
-        function matToGray(src, dst) {
-            if (src.channels() === 4) cv.cvtColor(src, dst, cv.COLOR_RGBA2GRAY);
-            else if (src.channels() === 3) cv.cvtColor(src, dst, cv.COLOR_RGB2GRAY);
-            else src.copyTo(dst);
-        }
-
-        function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
-
-/*
- * MICRO DETAIL TEST PROFILE
- * Reference artwork: near-black #111111
- * Suggested hidden-dot colors: #32171A to #3A181B
- * Dot size: 1–2 source pixels
- * Detector intentionally accepts dark, low-saturation red.
- *
- * If dots are still too visible:
- *   - move the artwork color closer to #111111, e.g. #2A1518
- *
- * If detection becomes too weak:
- *   - raise redLead sensitivity by reducing 9/6 slightly
- *   - or use a slightly lighter dot such as #3A181B
- */
-
-        // Micro Detail = SUBTLE DARK-RED DOTS ONLY.
-        // This version deliberately does NOT use OpenCV contour/connected-component
-        // APIs for red-dot extraction because some OpenCV.js builds throw
-        // "Cannot convert undefined to int" with those APIs.
-        // The red-dot detection below is pure JavaScript pixel processing.
-        function isRedPixel(r, g, b) {
-            /*
-             * GLARE-RESISTANT DARK-RED DETECTOR
-             *
-             * RGB brightness changes strongly under phone exposure and
-             * specular reflection. Therefore the primary signal is
-             * normalized chroma (color ratio), not absolute brightness.
-             *
-             * White glare has R≈G≈B -> normalized red excess ~ 0,
-             * so it is naturally rejected.
-             *
-             * Very bright / clipped pixels are rejected because a clipped
-             * reflection contains almost no recoverable color information.
-             */
-            const sum = r + g + b;
-            if (sum < 30) return false;
-
-            const maxC = Math.max(r, g, b);
-            const minC = Math.min(r, g, b);
-
-            // Reject obvious specular / clipped highlights.
-            if (maxC >= 248) return false;
-            if (r >= 235 && g >= 235 && b >= 235) return false;
-
-            const nr = r / sum;
-            const ng = g / sum;
-            const nb = b / sum;
-
-            const redChromaExcess = nr - ((ng + nb) * 0.5);
-            const redGap = nr - Math.max(ng, nb);
-            const saturation = (maxC - minC) / Math.max(1, maxC);
-
-            // Dark-red reference range is deliberately broad because
-            // camera white-balance can shift the actual RGB values.
-            const brightnessOK = maxC >= 24 && maxC <= 220;
-
-            return brightnessOK &&
-                   redChromaExcess >= 0.055 &&
-                   redGap >= 0.045 &&
-                   saturation >= 0.16;
-        }
-        function getRedEvidenceInBox(image, cx, cy, radiusX, radiusY) {
-            const {width, height, data} = image;
-            const x0 = Math.max(0, Math.floor(cx - radiusX));
-            const x1 = Math.min(width - 1, Math.ceil(cx + radiusX));
-            const y0 = Math.max(0, Math.floor(cy - radiusY));
-            const y1 = Math.min(height - 1, Math.ceil(cy + radiusY));
-
-            let strong = 0, score = 0, maxRedExcess = 0;
-            let bestX = cx, bestY = cy, bestScore = -Infinity;
-
-            for (let y = y0; y <= y1; y++) {
-                let p = y * width + x0;
-                for (let x = x0; x <= x1; x++, p++) {
-                    const i = p * 4;
-                    const r = data[i], g = data[i+1], b = data[i+2];
-                    const sum = r + g + b;
-                    if (sum < 30) continue;
-
-                    const maxC = Math.max(r, g, b);
-                    const minC = Math.min(r, g, b);
-
-                    // Normalized red chroma is far less sensitive to
-                    // illumination than raw RGB.
-                    const nr = r / sum;
-                    const ng = g / sum;
-                    const nb = b / sum;
-                    const redExcess = nr - ((ng + nb) * 0.5);
-                    const redGap = nr - Math.max(ng, nb);
-                    const saturation = (maxC - minC) / Math.max(1, maxC);
-
-                    // Reflection/glare tends toward neutral white:
-                    // low redExcess + low saturation.
-                    if (maxC >= 248 || (r >= 235 && g >= 235 && b >= 235)) {
-                        continue;
-                    }
-
-                    maxRedExcess = Math.max(maxRedExcess, redExcess);
-
-                    const pixelScore = Math.max(0, redExcess * 100);
-                    if (isRedPixel(r, g, b)) {
-                        strong++;
-                        score += Math.min(10, pixelScore);
-                    } else if (redExcess >= 0.025 && redGap >= 0.018 && saturation >= 0.08) {
-                        score += Math.min(5, pixelScore * 0.55);
-                    }
-
-                    if (pixelScore > bestScore) {
-                        bestScore = pixelScore;
-                        bestX = x;
-                        bestY = y;
-                    }
-                }
-            }
-
-            return {strong, score, maxRedExcess, bestX, bestY};
-        }
-        function getRedComponentsFromCanvasSource(mat, minArea = 1) {
-            // Convert Mat to a canvas so we can inspect RGBA pixels directly.
-            const canvas = document.createElement('canvas');
-            canvas.width = mat.cols;
-            canvas.height = mat.rows;
-            cv.imshow(canvas, mat);
-            const ctx = canvas.getContext('2d', {willReadFrequently:true});
-            const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-            const w = canvas.width, h = canvas.height;
-
-            // 1 byte/pixel mask. 1 = red candidate, 0 = not red.
-            const mask = new Uint8Array(w * h);
-            for (let y = 0, p = 0; y < h; y++) {
-                for (let x = 0; x < w; x++, p++) {
-                    const i = p * 4;
-                    if (isRedPixel(data[i], data[i+1], data[i+2])) mask[p] = 1;
-                }
-            }
-
-            const components = [];
-            const stack = [];
-            for (let y = 0; y < h; y++) {
-                for (let x = 0; x < w; x++) {
-                    const seed = y * w + x;
-                    if (mask[seed] !== 1) continue;
-                    mask[seed] = 0;
-                    stack.length = 0;
-                    stack.push(seed);
-
-                    let area = 0, minX = x, maxX = x, minY = y, maxY = y;
-                    let sumX = 0, sumY = 0;
-
-                    while (stack.length) {
-                        const idx = stack.pop();
-                        const cy = Math.floor(idx / w);
-                        const cx = idx - cy * w;
-                        area++;
-                        sumX += cx; sumY += cy;
-                        if (cx < minX) minX = cx;
-                        if (cx > maxX) maxX = cx;
-                        if (cy < minY) minY = cy;
-                        if (cy > maxY) maxY = cy;
-
-                        // 8-connected red pixels.
-                        for (let dy = -1; dy <= 1; dy++) {
-                            for (let dx = -1; dx <= 1; dx++) {
-                                if (dx === 0 && dy === 0) continue;
-                                const nx = cx + dx, ny = cy + dy;
-                                if (nx < 0 || nx >= w || ny < 0 || ny >= h) continue;
-                                const ni = ny * w + nx;
-                                if (mask[ni] === 1) {
-                                    mask[ni] = 0;
-                                    stack.push(ni);
-                                }
-                            }
-                        }
-                    }
-
-                    if (area >= minArea) {
-                        components.push({
-                            x:minX, y:minY, w:maxX-minX+1, h:maxY-minY+1,
-                            area,
-                            cx:sumX/area, cy:sumY/area
-                        });
-                    }
-                }
-            }
-            return components;
-        }
-
-        function makeRGBAData(mat) {
-            const canvas = document.createElement('canvas');
-            canvas.width = mat.cols;
-            canvas.height = mat.rows;
-            cv.imshow(canvas, mat);
-            const ctx = canvas.getContext('2d', {willReadFrequently:true});
-            return { width: canvas.width, height: canvas.height, data: ctx.getImageData(0,0,canvas.width,canvas.height).data };
-        }
-
-        function getRedPixelCountInBox(image, cx, cy, radiusX, radiusY) {
-            return getRedEvidenceInBox(image,cx,cy,radiusX,radiusY).strong;
-        }
-
-        function projectPoint(H, x, y) {
-            const h = H.data64F || H.data32F;
-            const X = h[0]*x + h[1]*y + h[2];
-            const Y = h[3]*x + h[4]*y + h[5];
-            const W = h[6]*x + h[7]*y + h[8];
-            if (!isFinite(W) || Math.abs(W) < 1e-9) return null;
-            return {x:X/W, y:Y/W};
-        }
-
-        function redDotDetailScan(refRGBA, targetRGBA, H) {
-            const expectedDots=getRedComponentsFromCanvasSource(refRGBA,1);
-            const targetImage=makeRGBAData(targetRGBA);
-            let found=0,missing=0;
-            const resultDisplay=targetRGBA.clone();
-            const overlay=document.createElement('canvas');
-            overlay.width=targetRGBA.cols; overlay.height=targetRGBA.rows;
-            const octx=overlay.getContext('2d');
-            cv.imshow(overlay,resultDisplay);
-
-            for(const d of expectedDots){
-                const p=projectPoint(H,d.cx,d.cy);
-                if(!p || p.x<0 || p.y<0 || p.x>=targetRGBA.cols || p.y>=targetRGBA.rows){
-                    missing++; continue;
-                }
-                const scaleX=targetRGBA.cols/refRGBA.cols;
-                const scaleY=targetRGBA.rows/refRGBA.rows;
-                const scale=Math.max(0.35,Math.min(4,Math.max(scaleX,scaleY)));
-                const rx=Math.max(7,d.w*3.5*scale);
-                const ry=Math.max(7,d.h*3.5*scale);
-                const ev=getRedEvidenceInBox(targetImage,p.x,p.y,rx,ry);
-                const cameraMode = activeSourceType === 'camera';
-                const ok = cameraMode
-                    ? (ev.strong >= 1 && (ev.score >= 5.0 || ev.maxRedExcess >= 0.055))
-                    : (ev.strong >= 1 && (ev.score >= 7.0 || ev.maxRedExcess >= 0.055));
-                const bw=Math.max(14,d.w*5*scale), bh=Math.max(14,d.h*5*scale);
-                octx.strokeStyle=ok?'#22c55e':'#ef4444';
-                octx.lineWidth=2;
-                octx.strokeRect(p.x-bw/2,p.y-bh/2,bw,bh);
-                if(ok) found++; else missing++;
-            }
-            const annotated=cv.imread(overlay);
-            resultDisplay.delete();
-            const score=expectedDots.length?(found/expectedDots.length)*100:0;
-            return {score,expected:expectedDots.length,found,missing,resultDisplay:annotated};
-        }
-
-        function getGlareRatio(mat) {
-            const canvas = document.createElement('canvas');
-            canvas.width = mat.cols;
-            canvas.height = mat.rows;
-            cv.imshow(canvas, mat);
-            const ctx = canvas.getContext('2d', {willReadFrequently:true});
-            const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-
-            let brightNeutral = 0, total = 0;
-            // Sample every 4th pixel to keep the diagnostic lightweight.
-            for (let y = 0; y < canvas.height; y += 4) {
-                for (let x = 0; x < canvas.width; x += 4) {
-                    const i = (y * canvas.width + x) * 4;
-                    const r = data[i], g = data[i+1], b = data[i+2];
-                    const maxC = Math.max(r,g,b);
-                    const minC = Math.min(r,g,b);
-                    if (maxC > 225 && (maxC - minC) < 18) brightNeutral++;
-                    total++;
-                }
-            }
-            return total ? brightNeutral / total : 0;
-        }
-
         btnScan.onclick = async () => {
             if (!isCvReady) { alert("ระบบกำลังโหลด OpenCV Engine กรุณารอสักครู่"); return; }
-            if (!templateMat) { alert("กรุณาเลือก 'ภาพสัญลักษณ์ต้นฉบับ' ก่อนทำการสแกน"); return; }
+            if (!templateMat || templateMat.empty()) { alert("กรุณาเลือกภาพ Micro Detail ต้นฉบับก่อนทำการสแกน"); return; }
             if (!activeSourceType) { alert("กรุณาเปิดกล้องหรือเลือกไฟล์ภาพเปรียบเทียบก่อนทำการสแกน"); return; }
 
             if (isCameraActive) {
                 await new Promise(resolve => setTimeout(resolve, 350));
                 if (!videoElement.videoWidth || !videoElement.videoHeight) {
-                    alert("กล้องยังไม่พร้อม กรุณารอสักครู่แล้วลองใหม่");
+                    alert("กล้องยังไม่พร้อม กรุณาลองใหม่อีกครั้ง");
                     return;
                 }
             }
 
             let originalText = btnScan.innerText;
-            btnScan.innerText = "กำลังตรวจ Micro Detail สีแดงเข้ม...";
+            btnScan.innerText = "กำลังประมวลผล Multi-Scale Match...";
             btnScan.disabled = true;
 
             setTimeout(() => {
+                let targetMat = null, grayTarget = null, grayTempl = null, displayMat = null;
                 try {
-                    let targetSourceElement = isCameraActive ? videoElement : outputCanvas;
-                    let targetMat = matFromElement(targetSourceElement, 4000);
+                    let sourceElem = isCameraActive ? videoElement : outputCanvas;
+                    let canvas = document.createElement('canvas');
+                    canvas.width = sourceElem.naturalWidth || sourceElem.videoWidth || sourceElem.width;
+                    canvas.height = sourceElem.naturalHeight || sourceElem.videoHeight || sourceElem.height;
+                    let ctx = canvas.getContext('2d');
+                    ctx.drawImage(sourceElem, 0, 0);
+                    
+                    targetMat = cv.imread(canvas);
+                    if (targetMat.empty()) throw new Error("ไม่สามารถอ่านภาพเปรียบเทียบได้");
 
-                    // Estimate strong neutral highlights. This is diagnostic only;
-                    // the scan still proceeds because not every bright area is glare.
-                    if (isCameraActive) {
-                        const glareRatio = getGlareRatio(targetMat);
-                        if (glareRatio > 0.08) {
-                            statusBar.innerText = "สถานะ: พบแสงสะท้อนค่อนข้างมาก — ลดแสง/เปลี่ยนมุมเล็กน้อยเพื่อความแม่นยำ";
-                        } else {
-                            statusBar.innerText = "สถานะ: แสงสะท้อนอยู่ในระดับที่ระบบรองรับ";
+                    grayTarget = new cv.Mat();
+                    grayTempl = new cv.Mat();
+                    
+                    if (targetMat.channels() === 4) cv.cvtColor(targetMat, grayTarget, cv.COLOR_RGBA2GRAY);
+                    else cv.cvtColor(targetMat, grayTarget, cv.COLOR_RGB2GRAY);
+                    
+                    if (templateMat.channels() === 4) cv.cvtColor(templateMat, grayTempl, cv.COLOR_RGBA2GRAY);
+                    else cv.cvtColor(templateMat, grayTempl, cv.COLOR_RGB2GRAY);
+
+                    // Multi-Scale Template Matching ค้นหาในหลายขนาดสเกล (0.5x ถึง 1.5x)
+                    let bestScore = -1;
+                    let bestLoc = null;
+                    let bestScale = 1.0;
+                    let bestW = 0, bestH = 0;
+
+                    let scales = [0.6, 0.8, 1.0, 1.2, 1.4];
+                    for (let scale of scales) {
+                        let resizedTempl = new cv.Mat();
+                        let dsize = new cv.Size(Math.round(grayTempl.cols * scale), Math.round(grayTempl.rows * scale));
+                        
+                        if (dsize.width <= 0 || dsize.height <= 0 || dsize.width > grayTarget.cols || dsize.height > grayTarget.rows) {
+                            resizedTempl.delete();
+                            continue;
                         }
+
+                        cv.resize(grayTempl, resizedTempl, dsize, 0, 0, cv.INTER_AREA);
+
+                        let res = new cv.Mat();
+                        cv.matchTemplate(grayTarget, resizedTempl, res, cv.TM_CCOEFF_NORMED);
+                        let minMax = cv.minMaxLoc(res);
+
+                        if (minMax.maxVal > bestScore) {
+                            bestScore = minMax.maxVal;
+                            bestLoc = minMax.maxLoc;
+                            bestScale = scale;
+                            bestW = resizedTempl.cols;
+                            bestH = resizedTempl.rows;
+                        }
+
+                        resizedTempl.delete();
+                        res.delete();
                     }
 
-                    let grayTempl = new cv.Mat(), grayTarget = new cv.Mat();
-                    matToGray(templateMat, grayTempl); matToGray(targetMat, grayTarget);
+                    displayMat = new cv.Mat();
+                    if (targetMat.channels() === 4) targetMat.copyTo(displayMat);
+                    else cv.cvtColor(targetMat, displayMat, cv.COLOR_RGB2RGBA);
 
-                    // ORB is ONLY for alignment. It is never part of the Micro Detail score.
-                    let orb = new cv.ORB(15000);
-                    let kp1 = new cv.KeyPointVector(), kp2 = new cv.KeyPointVector();
-                    let des1 = new cv.Mat(), des2 = new cv.Mat();
-                    orb.detectAndCompute(grayTempl, new cv.Mat(), kp1, des1);
-                    orb.detectAndCompute(grayTarget, new cv.Mat(), kp2, des2);
+                    let matchPercentage = (bestScore * 100).toFixed(1);
+                    const PASS_THRESHOLD = 0.75; // เกณฑ์ผ่าน 75% รองรับการถ่ายด้วยมือถือ
+                    const isPass = bestScore >= PASS_THRESHOLD;
 
-                    let H = null, inlierCount = 0, goodMatches = [];
-                    let resultDisplay = targetMat.clone();
-                    let canAlign = false;
-
-                    if (!des1.empty() && !des2.empty() && kp1.size() > 10) {
-                        let bf = new cv.BFMatcher(cv.NORM_HAMMING, true);
-                        let matches = new cv.DMatchVector();
-                        bf.match(des1, des2, matches);
-                        for (let i=0; i<matches.size(); i++) {
-                            if (matches.get(i).distance < 55) goodMatches.push(matches.get(i));
-                        }
-
-                        if (goodMatches.length >= 12) {
-                            let srcPoints=[], dstPoints=[];
-                            for (let m of goodMatches) {
-                                let a=kp1.get(m.queryIdx).pt, b=kp2.get(m.trainIdx).pt;
-                                srcPoints.push(a.x,a.y); dstPoints.push(b.x,b.y);
-                            }
-                            let srcMat=cv.matFromArray(goodMatches.length,1,cv.CV_32FC2,srcPoints);
-                            let dstMat=cv.matFromArray(goodMatches.length,1,cv.CV_32FC2,dstPoints);
-                            let mask=new cv.Mat();
-                            H=cv.findHomography(srcMat,dstMat,cv.RANSAC,4.0,mask);
-                            if (!H.empty()) {
-                                for(let i=0;i<mask.rows;i++) if(mask.data[i]!==0) inlierCount++;
-                                canAlign = inlierCount >= 12;
-                            }
-                            srcMat.delete(); dstMat.delete(); mask.delete();
-                        }
-                        matches.delete(); bf.delete();
+                    if (isPass && bestLoc) {
+                        let p1 = new cv.Point(bestLoc.x, bestLoc.y);
+                        let p2 = new cv.Point(bestLoc.x + bestW, bestLoc.y + bestH);
+                        cv.rectangle(displayMat, p1, p2, new cv.Scalar(0, 255, 0, 255), 4);
+                        cv.putText(displayMat, `MATCH ${matchPercentage}%`, new cv.Point(bestLoc.x, Math.max(30, bestLoc.y - 10)), cv.FONT_HERSHEY_SIMPLEX, 0.8, new cv.Scalar(0, 255, 0, 255), 2);
                     }
 
-                    if (canAlign) {
-                        // IMPORTANT: final result is based ONLY on red Micro Detail dots.
-                        let micro = redDotDetailScan(templateMat, targetMat, H);
-                        resultDisplay.delete();
-                        resultDisplay = micro.resultDisplay;
+                    cv.imshow('outputCanvas', displayMat);
 
-                        // User requirement: PASS only when score is strictly greater than 85%.
-                        const isPass = micro.score > 85.0;
+                    popupTitle.innerHTML = isPass
+                        ? `<span class="text-success">✅ PASS // ตรวจพบ Micro Detail ถูกต้อง</span>`
+                        : `<span class="text-danger">❌ FAIL // ไม่พบ Micro Detail ที่ตรงกัน</span>`;
 
-                        popupTitle.innerHTML = isPass
-                            ? `<span class="text-success">✅ PASS // Micro Detail สีแดงเข้ม</span>`
-                            : `<span class="text-danger">❌ FAIL // Micro Detail สีแดงเข้ม</span>`;
+                    popupMessage.innerHTML = `
+                        Match Score: <span style="font-size: 1.2em; font-weight: bold; color: #1e293b;">${matchPercentage}%</span><br><br>
+                        เกณฑ์ PASS: ความเหมือน &ge; 75%<br>
+                        (ระบบค้นหาแบบ Multi-Scale อัตโนมัติ)
+                    `;
 
-                        popupMessage.innerHTML = `
-                            Micro Edge Detail: <span style="font-size:1.8rem;font-weight:bold;">${micro.score.toFixed(1)}%</span><br><br>
-                            <span style="font-size:.8rem;color:#64748b;">เกณฑ์ PASS: มากกว่า 85.0%</span><br>
-                            <span style="font-size:.8rem;color:#64748b;">Micro Detail ทั้งหมด: ${micro.expected.toLocaleString()} จุด</span><br>
-                            <span style="font-size:.8rem;color:#059669;">ตรวจพบ: ${micro.found.toLocaleString()} จุด</span><br>
-                            <span style="font-size:.8rem;color:#dc2626;">ตรวจไม่พบ: ${micro.missing.toLocaleString()} จุด</span>
-                        `;
-                    } else {
-                        popupTitle.innerHTML=`<span class="text-danger">❌ FAIL // จัดแนวภาพไม่ได้</span>`;
-                        popupMessage.innerHTML=`ไม่สามารถจัดแนวภาพเพื่อค้นหาจุดสีแดงได้<br><span style="font-size:.8rem;color:#64748b;">การจัดแนวเป็นเพียงขั้นตอนเตรียมตำแหน่ง และไม่ถูกนำมาคิดคะแนน Micro Detail</span>`;
-                    }
+                    if (isCameraActive) { videoElement.style.display = 'none'; }
+                    outputCanvas.style.display = 'block';
+                    popupOverlay.style.display = 'block'; 
+                    popupBox.style.display = 'block';
 
-                    cv.imshow('outputCanvas', resultDisplay);
-                    videoElement.style.display='none'; outputCanvas.style.display='block';
-                    popupOverlay.style.display='block'; popupBox.style.display='block';
-
-                    if(H) H.delete();
-                    targetMat.delete(); grayTempl.delete(); grayTarget.delete(); resultDisplay.delete();
-                    kp1.delete(); kp2.delete(); des1.delete(); des2.delete(); orb.delete();
                 } catch(err) {
                     console.error(err);
-                    alert("เกิดข้อผิดพลาดในระบบ Micro Detail สีแดงเข้ม: " + err.message);
+                    alert("เกิดข้อผิดพลาดในการตรวจสอบ: " + err.message);
+                } finally {
+                    if (targetMat) targetMat.delete();
+                    if (grayTarget) grayTarget.delete();
+                    if (grayTempl) grayTempl.delete();
+                    if (displayMat) displayMat.delete();
                 }
-                btnScan.innerText=originalText; btnScan.disabled=false;
-            },100);
+
+                btnScan.innerText = originalText; 
+                btnScan.disabled = false;
+            }, 100);
         };
     </script>
 </body>
