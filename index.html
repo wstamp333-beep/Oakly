@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RELIABLE QC VISION - Multi-Scale Match</title>
+    <title>ROBUST QC VISION - CLAHE Multi-Scale</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Oxanium:wght@600;700&display=swap');
         
@@ -187,7 +187,7 @@
 </head>
 <body>
 
-    <h1>RELIABLE QC VISION</h1>
+    <h1>ROBUST QC VISION</h1>
 
     <div class="panel">
         <div class="panel-title">1. ภาพ Micro Detail ต้นฉบับ</div>
@@ -206,7 +206,7 @@
         <div class="controls-row">
             <button class="btn btn-secondary" id="btnToggleCam">เปิดกล้องมือถือ</button>
             <div id="cameraHint" style="font-size:.75rem;color:#64748b;line-height:1.45;margin-top:8px;text-align:center;">
-                ระบบรองรับการสแกนผ่านกล้องและปรับสเกลอัตโนมัติ
+                ระบบปรับสมดุลแสงและสเกลอัตโนมัติ (CLAHE)
             </div>
         </div>
         
@@ -216,7 +216,7 @@
         </div>
 
         <div style="margin-top: 12px;">
-            <button class="btn" id="btnScan">เริ่มสแกนตรวจสอบ Micro Detail</button>
+            <button class="btn" id="btnScan">เริ่มสแกนตรวจสอบอัจฉริยะ</button>
         </div>
     </div>
 
@@ -253,7 +253,7 @@
             if (typeof cv !== 'undefined' && typeof cv.Mat === 'function') {
                 clearInterval(checkInterval);
                 isCvReady = true;
-                statusBar.innerText = "สถานะ: พร้อมใช้งาน (Multi-Scale Mode)";
+                statusBar.innerText = "สถานะ: พร้อมใช้งาน (CLAHE + Multi-Scale Mode)";
             }
         }, 300);
 
@@ -369,11 +369,12 @@
             }
 
             let originalText = btnScan.innerText;
-            btnScan.innerText = "กำลังประมวลผล Multi-Scale Match...";
+            btnScan.innerText = "กำลังปรับสมดุลแสงและสแกน...";
             btnScan.disabled = true;
 
             setTimeout(() => {
                 let targetMat = null, grayTarget = null, grayTempl = null, displayMat = null;
+                let claheTarget = null, claheTempl = null, claheObj = null;
                 try {
                     let sourceElem = isCameraActive ? videoElement : outputCanvas;
                     let canvas = document.createElement('canvas');
@@ -394,26 +395,33 @@
                     if (templateMat.channels() === 4) cv.cvtColor(templateMat, grayTempl, cv.COLOR_RGBA2GRAY);
                     else cv.cvtColor(templateMat, grayTempl, cv.COLOR_RGB2GRAY);
 
-                    // Multi-Scale Template Matching ค้นหาในหลายขนาดสเกล (0.5x ถึง 1.5x)
+                    // ใช้ CLAHE (Contrast Limited Adaptive Histogram Equalization) เพื่อแก้ปัญหาแสงสะท้อนและเงาดำ
+                    claheObj = cv.createCLAHE(2.0, new cv.Size(8, 8));
+                    claheTarget = new cv.Mat();
+                    claheTempl = new cv.Mat();
+                    claheObj.apply(grayTarget, claheTarget);
+                    claheObj.apply(grayTempl, claheTempl);
+
+                    // Multi-Scale Template Matching ค้นหาในหลากหลายระยะ (0.5x ถึง 1.5x)
                     let bestScore = -1;
                     let bestLoc = null;
                     let bestScale = 1.0;
                     let bestW = 0, bestH = 0;
 
-                    let scales = [0.6, 0.8, 1.0, 1.2, 1.4];
+                    let scales = [0.5, 0.7, 0.9, 1.0, 1.1, 1.3, 1.5];
                     for (let scale of scales) {
                         let resizedTempl = new cv.Mat();
-                        let dsize = new cv.Size(Math.round(grayTempl.cols * scale), Math.round(grayTempl.rows * scale));
+                        let dsize = new cv.Size(Math.round(claheTempl.cols * scale), Math.round(claheTempl.rows * scale));
                         
-                        if (dsize.width <= 0 || dsize.height <= 0 || dsize.width > grayTarget.cols || dsize.height > grayTarget.rows) {
+                        if (dsize.width <= 0 || dsize.height <= 0 || dsize.width > claheTarget.cols || dsize.height > claheTarget.rows) {
                             resizedTempl.delete();
                             continue;
                         }
 
-                        cv.resize(grayTempl, resizedTempl, dsize, 0, 0, cv.INTER_AREA);
+                        cv.resize(claheTempl, resizedTempl, dsize, 0, 0, cv.INTER_AREA);
 
                         let res = new cv.Mat();
-                        cv.matchTemplate(grayTarget, resizedTempl, res, cv.TM_CCOEFF_NORMED);
+                        cv.matchTemplate(claheTarget, resizedTempl, res, cv.TM_CCOEFF_NORMED);
                         let minMax = cv.minMaxLoc(res);
 
                         if (minMax.maxVal > bestScore) {
@@ -433,7 +441,7 @@
                     else cv.cvtColor(targetMat, displayMat, cv.COLOR_RGB2RGBA);
 
                     let matchPercentage = (bestScore * 100).toFixed(1);
-                    const PASS_THRESHOLD = 0.75; // เกณฑ์ผ่าน 75% รองรับการถ่ายด้วยมือถือ
+                    const PASS_THRESHOLD = 0.60; // ปรับเกณฑ์ยืดหยุ่นขึ้น (60%) เพื่อรองรับมุมมองและแสงที่ต่างจากเดิม
                     const isPass = bestScore >= PASS_THRESHOLD;
 
                     if (isPass && bestLoc) {
@@ -451,8 +459,8 @@
 
                     popupMessage.innerHTML = `
                         Match Score: <span style="font-size: 1.2em; font-weight: bold; color: #1e293b;">${matchPercentage}%</span><br><br>
-                        เกณฑ์ PASS: ความเหมือน &ge; 75%<br>
-                        (ระบบค้นหาแบบ Multi-Scale อัตโนมัติ)
+                        เกณฑ์ PASS: ความเหมือน &ge; 60%<br>
+                        (ระบบเปิดใช้งาน CLAHE ลดผลกระทบเรื่องแสงและระยะ)
                     `;
 
                     if (isCameraActive) { videoElement.style.display = 'none'; }
@@ -467,6 +475,9 @@
                     if (targetMat) targetMat.delete();
                     if (grayTarget) grayTarget.delete();
                     if (grayTempl) grayTempl.delete();
+                    if (claheTarget) claheTarget.delete();
+                    if (claheTempl) claheTempl.delete();
+                    if (claheObj) claheObj.delete();
                     if (displayMat) displayMat.delete();
                 }
 
